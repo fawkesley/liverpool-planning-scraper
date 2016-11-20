@@ -27,6 +27,7 @@ RECENT_CSV = pjoin(dirname(__file__), '..', '_cache', 'recent_urls.csv')
 
 
 def main(argv):
+    random.seed(datetime.date.today().isoformat())
     configure_logging()
     find_new_application_ids()
     get_or_refresh_data_for_applications()
