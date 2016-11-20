@@ -1,0 +1,24 @@
+# MAILTO="you@example.com"
+
+# *    *    *    *    *  command to be executed
+# ┬    ┬    ┬    ┬    ┬
+# │    │    │    │    │
+# │    │    │    │    │
+# │    │    │    │    └───── day of week (0 - 6) (0 or 6 are Sunday to Saturday, or use names)
+# │    │    │    └────────── month (1 - 12)
+# │    │    └─────────────── day of month (1 - 31)
+# │    └──────────────────── hour (0 - 23)
+# └───────────────────────── min (0 - 59)
+
+# @yearly (or @annually)  Run once a year at midnight in the morning of January 1 0 0 1 1 *
+# @monthly    Run once a month at midnight in the morning of the first of the month   0 0 1 * *
+# @weekly Run once a week at midnight in the morning of Sunday    0 0 * * 0
+# @daily  Run once a day at midnight  0 0 * * *
+# @hourly Run once an hour at the beginning of the hour   0 * * * *
+# @reboot Run at startup  @reboot
+
+# Automatically install the crontab regularly file. Don't edit the crontab
+# directly, as that isn't source controlled.
+@daily crontab < ~/crontab.txt
+
+30 5 * * * /home/USER/liverpool-planning-scraper/cron_run.sh 2>&1 >> /home/USER/cron.log
