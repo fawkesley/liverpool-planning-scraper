@@ -19,13 +19,11 @@ from .recent_applications_scraper import RecentApplicationsScraper
 from .application_scraper import scrape_single_application
 from .output import output_data
 from .db import applications, db
+from .sql import SQL_DAYS_SINCE_RECEIVED, SQL_DAYS_SINCE_SCRAPE
 
 LOG = None
 
 RECENT_CSV = pjoin(dirname(__file__), '..', '_cache', 'recent_urls.csv')
-
-SQL_DAYS_SINCE_SCRAPE = "julianday('now')-julianday(extract_datetime)"
-SQL_DAYS_SINCE_RECEIVED = "julianday('now')-julianday(received_date)"
 
 
 def main(argv):

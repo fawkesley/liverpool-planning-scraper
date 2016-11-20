@@ -1,50 +1,38 @@
 import datetime
+import logging
 from os.path import join as pjoin
 
 from atomicfile import AtomicFile
-
-from .db import applications
 import dataset
+
+from .db import db
+from .sql import SQL_DAYS_SINCE_RECEIVED, SQL_DAYS_SINCE_SCRAPE
+
+LOG = logging.getLogger(__name__)
 
 
 def output_data(directory):
-    date_earliest, date_latest = get_earliest_latest()
-
-    for date in get_days_between(date_earliest, date_latest):
-        output_files_for(date, directory)
+    output_year_to_date(directory)
 
 
-def output_files_for(date, directory):
-    file_basename = '{}.csv'.format(date.isoformat())
-    filename = pjoin(directory, 'applications_received', 'csv', file_basename)
+def output_year_to_date(directory):
+    query = (
+        'SELECT * from applications WHERE '
+        '    {days_since_received} <= 365 '
+        'ORDER BY received_date, northgate_id'.format(
+                days_since_scrape=SQL_DAYS_SINCE_SCRAPE,
+                days_since_received=SQL_DAYS_SINCE_RECEIVED
+            )
+    )
 
-    result = list(applications.find(
-        received_date=date,
-        order_by='application_number'
-    ))
+    for fmt in ['csv', 'json']:
+        file_basename = 'year_to_date.{}'.format(fmt)
+        filename = pjoin(directory, 'applications', file_basename)
 
-    # TODO: filter unextracted ones
-
-    if len(result) > 0:
-        print("Writing {}".format(file_basename))
+        LOG.info("Writing {}".format(file_basename))
         with AtomicFile(filename, 'w') as f:
             dataset.freeze(
-                result,
-                format='csv',
+                db.query(query),
+                format=fmt,
                 fileobj=f
             )
-
-
-def get_earliest_latest():
-    earliest = applications.find_one(order_by='received_date')
-    latest = applications.find_one(order_by='-received_date')
-
-    if earliest is None or latest is None:
-        raise RuntimeError("No data?")
-
-    return earliest['received_date'], latest['received_date']
-
-
-def get_days_between(earliest, latest):
-    for offset in range(0, (latest - earliest).days + 1):
-        yield earliest + datetime.timedelta(days=offset)
