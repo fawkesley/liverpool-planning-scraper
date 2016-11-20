@@ -3,6 +3,7 @@
 import time
 import os
 import stat
+import random
 import datetime
 import io
 import logging
@@ -17,27 +18,55 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from .recent_applications_scraper import RecentApplicationsScraper
 from .application_scraper import scrape_single_application
 from .output import output_data
-from .db import applications
+from .db import applications, db
 
 LOG = None
 
 RECENT_CSV = pjoin(dirname(__file__), '..', '_cache', 'recent_urls.csv')
 
+SQL_DAYS_SINCE_SCRAPE = "julianday('now')-julianday(extract_datetime)"
+SQL_DAYS_SINCE_RECEIVED = "julianday('now')-julianday(received_date)"
+
 
 def main(argv):
     configure_logging()
+    find_new_application_ids()
+    get_or_refresh_data_for_applications()
+    export_data_to_files()
+
+
+def find_new_application_ids():
+    LOG.info('Step 1: Find brand new application ids/URLs')
+
     if recent_applications_needs_updating():
         find_recent_applications()
+    else:
+        LOG.info("We're pretty up to date already.")
+
+
+def get_or_refresh_data_for_applications():
+    LOG.info('Step 2: (Re)visit known applications & update database')
 
     for row in get_applications_needing_scraping():
-        row.update(scrape_single_application(row['url']))
+        url = row.pop('url')
+        northgate_id = row.pop('northgate_id')
+
+        LOG.info('Updating northgate id {}, url {}'.format(northgate_id, url))
+
+        new_row = {
+            'northgate_id': northgate_id
+        }
+        new_row.update(scrape_single_application(url))
 
         try:
-            applications.upsert(row, 'northgate_id')
+            applications.upsert(new_row, 'northgate_id')
         except:
-            pprint(row)
+            pprint(new_row)
             raise
 
+
+def export_data_to_files():
+    LOG.info('Step 3: Export data to CSV/JSON')
     output_data(pjoin(dirname(__file__), '..', '..',
                       'liverpool-planning-data'))
 
@@ -56,7 +85,7 @@ def recent_applications_needs_updating():
 
     today = datetime.date.today()
 
-    return (today - most_recent['received_date']).days > 2
+    return (today - most_recent['received_date']).days > 2  # TODO: make it 1
 
 
 def file_age_in_seconds(pathname):
@@ -64,19 +93,88 @@ def file_age_in_seconds(pathname):
 
 
 def get_applications_needing_scraping():
-    # Keep coming back to applications according to the schedule:
-    #
-    # brand new applications
-    # received 0-90 days: every day
-    # received 91-365 days: every week
-    # received 365+ days: every month
-    #
-    # - extract_datetime = NULL
-    # - extract_datetime older than 1 day AND received_date < 90 days
-    #
-    # Then we will keep refreshing applications as they progress
+    """
+    Return applications (database rows) that need re-scraping according to
+    a schedule.
+    Keep returning to applications, but do it less frequently as they become
+    older.
+    """
 
-    return applications.find(extract_datetime=None, order_by='northgate_id')
+    need_updating = []
+
+    totally_new = list(applications.find(extract_datetime=None))
+    zero_to_ninety = find_applications_need_refreshing_0_to_90_days()
+    ninety_one_to_365 = find_applications_need_refreshing_91_to_365_days()
+    one_year_plus = find_applications_need_refreshing_365_days_plus()
+
+    random.shuffle(totally_new)
+    random.shuffle(zero_to_ninety)
+    random.shuffle(ninety_one_to_365)
+    random.shuffle(one_year_plus)
+
+    need_updating.extend(totally_new)
+    need_updating.extend(zero_to_ninety)
+    need_updating.extend(ninety_one_to_365)
+    need_updating.extend(one_year_plus)
+
+    LOG.info('{} totally new, {} 0-90 days, {} 91-365 days, '
+             '{} 365+ days'.format(
+                 len(totally_new), len(zero_to_ninety), len(ninety_one_to_365),
+                 len(one_year_plus)))
+
+    return need_updating
+
+
+def find_applications_need_refreshing_0_to_90_days():
+    """
+    Visit applications received within 90 days every day as this is the
+    period where they change the most.
+    """
+
+    query = (
+        'SELECT * from applications WHERE '
+        '    {days_since_scrape} >= 1.0 AND '
+        '    {days_since_received} < 90'.format(
+                days_since_scrape=SQL_DAYS_SINCE_SCRAPE,
+                days_since_received=SQL_DAYS_SINCE_RECEIVED
+            )
+    )
+
+    return list(db.query(query))
+
+
+def find_applications_need_refreshing_91_to_365_days():
+    """
+    Visit applications that are 3-12 months old every week as they probably
+    aren't changing much.
+    """
+
+    query = (
+        'SELECT * from applications WHERE '
+        '    {days_since_scrape} >= 7.0 AND '
+        '    90 <= {days_since_received} AND '
+        '    {days_since_received} < 365'.format(
+                days_since_scrape=SQL_DAYS_SINCE_SCRAPE,
+                days_since_received=SQL_DAYS_SINCE_RECEIVED
+            )
+    )
+    return list(db.query(query))
+
+
+def find_applications_need_refreshing_365_days_plus():
+    """
+    Visit 1 year+ old applications once per month
+    """
+
+    query = (
+        'SELECT * from applications WHERE '
+        '    {days_since_scrape} >= 30 AND '
+        '    365 <= {days_since_received}'.format(
+                days_since_scrape=SQL_DAYS_SINCE_SCRAPE,
+                days_since_received=SQL_DAYS_SINCE_RECEIVED
+            )
+    )
+    return list(db.query(query))
 
 
 def find_recent_applications():
@@ -108,6 +206,11 @@ def find_recent_applications():
 
     finally:
         webdriver.quit()
+
+    applications_without_data = applications.count(extract_datetime=None)
+
+    LOG.info('There are now {} applications with no data'.format(
+        applications_without_data))
 
 
 def dump_screenshot_and_source(webdriver):
