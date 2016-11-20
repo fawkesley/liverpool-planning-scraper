@@ -80,7 +80,12 @@ def parse_comments_until(lxml_root):
 
 
 def parse_date_of_committee(lxml_root):
-    return parse_named_field(lxml_root, 'Date of Committee')
+    text = parse_named_field(lxml_root, 'Date of Committee')
+
+    if text is not None:
+        return parse_date(text)
+    else:
+        return None
 
 
 def parse_decision(lxml_root):
