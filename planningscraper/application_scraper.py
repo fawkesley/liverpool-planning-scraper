@@ -223,11 +223,19 @@ def parse_description(lxml_root):
 
 def get_address_lines(lxml_root):
     one_line = parse_named_field(lxml_root, 'Site Address')
-    return [line.strip('\r') for line in one_line.split('\n')]
+    if one_line is None:
+        return None
+    else:
+        return [line.strip('\r') for line in one_line.split('\n')]
 
 
 def parse_postcode(lxml_root):
-    possible_postcode = get_address_lines(lxml_root)[-1]
+    address_lines = get_address_lines(lxml_root)
+    if not address_lines:
+        return None
+
+    possible_postcode = address_lines[-1]
+
     match = re.match('([Ll]\d{1,2}) ?(\d[A-Za-z]{2})', possible_postcode)
 
     if match is not None:
@@ -238,7 +246,11 @@ def parse_postcode(lxml_root):
 
 
 def parse_site_address(lxml_root):
-    return ', '.join(get_address_lines(lxml_root))
+    address_lines = get_address_lines(lxml_root)
+    if address_lines:
+        return ', '.join(get_address_lines(lxml_root))
+    else:
+        return None
 
 
 def parse_named_field(lxml_root, name):
