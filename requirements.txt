@@ -1,7 +1,7 @@
 alembic==0.8.8
 atomicfile==1.0
 chardet==2.3.0
-dataset==0.7.0
+dataset==0.7.1
 idna==2.1
 lxml==3.6.0
 Mako==1.0.6
