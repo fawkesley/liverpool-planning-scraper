@@ -132,7 +132,7 @@ def find_applications_need_refreshing_0_to_90_days():
 
     query = (
         'SELECT * from applications WHERE '
-        '    {days_since_scrape} >= 1.0 AND '
+        '    {days_since_scrape} > 0.8 AND '
         '    {days_since_received} < 90'.format(
                 days_since_scrape=SQL_DAYS_SINCE_SCRAPE,
                 days_since_received=SQL_DAYS_SINCE_RECEIVED
@@ -150,7 +150,7 @@ def find_applications_need_refreshing_91_to_365_days():
 
     query = (
         'SELECT * from applications WHERE '
-        '    {days_since_scrape} >= 7.0 AND '
+        '    {days_since_scrape} >= 6.5 AND '
         '    90 <= {days_since_received} AND '
         '    {days_since_received} < 365'.format(
                 days_since_scrape=SQL_DAYS_SINCE_SCRAPE,
@@ -167,7 +167,7 @@ def find_applications_need_refreshing_365_days_plus():
 
     query = (
         'SELECT * from applications WHERE '
-        '    {days_since_scrape} >= 30 AND '
+        '    {days_since_scrape} >= 29.5 AND '
         '    365 <= {days_since_received}'.format(
                 days_since_scrape=SQL_DAYS_SINCE_SCRAPE,
                 days_since_received=SQL_DAYS_SINCE_RECEIVED
