@@ -47,7 +47,7 @@ push_data_repo() {
   cd "${DATA_REPO}"
   git add --all .
   git commit -m "Update CSV files."
-  git push -f origin master:master
+  git push origin master:master
   cd -
 }
 
