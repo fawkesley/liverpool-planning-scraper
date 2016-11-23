@@ -121,6 +121,7 @@ def get_applications_needing_scraping():
                  len(totally_new), len(zero_to_ninety), len(ninety_one_to_365),
                  len(one_year_plus)))
 
+    time.sleep(10)
     return need_updating
 
 
