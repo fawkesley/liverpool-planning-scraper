@@ -5,7 +5,7 @@ import io
 from collections import OrderedDict
 from os.path import basename, dirname, join as pjoin
 
-from nose.tools import assert_equal
+from nose.tools import assert_equal, assert_almost_equal
 from application_scraper import parse_application_page
 
 assert_equal.__self__.maxDiff = None
@@ -32,6 +32,8 @@ EXPECTED = {
        ('wards', None),
        ('geo_northing', None),
        ('geo_easting', None),
+       ('geo_latitude', None),
+       ('geo_longitude', None),
        ('parishes', None),
        ('case_officer_name', None),
        ('case_officer_number', None),
@@ -56,6 +58,8 @@ EXPECTED = {
        ('wards', 'Allerton and Hunts Cross'),
        ('geo_northing', 384865),
        ('geo_easting', 342314),
+       ('geo_latitude', 53.357501),
+       ('geo_longitude', -2.868192),
        ('parishes', 'City South'),
        ('case_officer_name', 'Jon Woodward'),
        ('case_officer_number', '01512333021'),
@@ -80,6 +84,8 @@ EXPECTED = {
        ('wards', 'Woolton'),
        ('geo_northing', 386592),
        ('geo_easting', 342208),
+       ('geo_latitude', 53.373011),
+       ('geo_longitude', -2.870101),
        ('parishes', 'City South'),
        ('case_officer_name', 'Caroline Maher'),
        ('case_officer_number', '01512333021'),
@@ -106,4 +112,7 @@ def _test_parse_application_page(filename):
     assert_equal(expected.keys(), parsed.keys())
 
     for key, expected_value in expected.items():
-        assert_equal(expected_value, parsed[key], key)
+        if isinstance(expected_value, float):
+            assert_almost_equal(expected_value, parsed[key], 5, key)
+        else:
+            assert_equal(expected_value, parsed[key], key)
