@@ -5,3 +5,7 @@ run:
 .PHONY: createdb
 createdb:
 	python -m planningscraper.db
+
+.PHONY: test
+test:
+	nosetests -v planningscraper
