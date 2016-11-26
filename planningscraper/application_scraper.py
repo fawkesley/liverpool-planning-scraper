@@ -1,5 +1,5 @@
 import datetime
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 
 import requests
 import requests_cache
@@ -10,6 +10,21 @@ from lxml.html import fromstring
 import pytz
 
 UK = pytz.timezone('Europe/London')
+Geo = namedtuple('Geo', 'easting,northing,latitude,longitude')
+
+
+class Geo():
+    def __init__(self, easting, northing):
+        self.easting = easting
+        self.northing = northing
+
+    @property
+    def latitude(self):
+        return None
+
+    @property
+    def longitude(self):
+        return None
 
 
 def scrape_single_application(url):
@@ -204,21 +219,26 @@ def parse_parishes(lxml_root):
 
 
 def parse_geo_northing(lxml_root):
-    geo_text = parse_named_field(lxml_root, 'Location Co ordinates')
-    match = re.match('.*Northing\s+(\d{6})', geo_text)
-    if match:
-        return match.groups()[0]
-    else:
-        return None
+    return parse_geo(lxml_root).northing
 
 
 def parse_geo_easting(lxml_root):
+    return parse_geo(lxml_root).easting
+
+
+def parse_geo(lxml_root):
     geo_text = parse_named_field(lxml_root, 'Location Co ordinates')
-    match = re.match('^Easting\s+(\d{6})', geo_text)
+    match = re.match(
+        '^Easting\s+(?P<easting>\d{6}).*Northing\s+(?P<northing>\d{6})',
+        geo_text
+    )
     if match:
-        return match.groups()[0]
+        return Geo(
+            easting=int(match.group('easting')),
+            northing=int(match.group('northing')),
+        )
     else:
-        return None
+        return Geo(None, None)
 
 
 def parse_current_status(lxml_root):
