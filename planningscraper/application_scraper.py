@@ -45,6 +45,8 @@ def parse_application_page(page_bytes):
        ('wards', parse_wards(root)),
        ('geo_northing', parse_geo_northing(root)),
        ('geo_easting', parse_geo_easting(root)),
+       ('geo_latitude', None),
+       ('geo_longitude', None),
        ('parishes', parse_parishes(root)),
        ('case_officer_name', parse_case_officer_name(root)),
        ('case_officer_number', parse_case_officer_number(root)),
