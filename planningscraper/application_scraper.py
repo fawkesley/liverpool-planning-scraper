@@ -16,7 +16,13 @@ def scrape_single_application(url):
     with requests_cache.enabled('cache.db', expire_after=3*3600):
         response = requests.get(url)
     response.raise_for_status()
-    root = fromstring(response.content.decode('utf-8'))
+
+    return parse_application_page(response.content)
+
+
+def parse_application_page(page_bytes):
+    unicode_html = page_bytes.decode('utf-8')
+    root = fromstring(unicode_html)
 
     return OrderedDict([
        ('extract_datetime', datetime.datetime.now(UK)),
