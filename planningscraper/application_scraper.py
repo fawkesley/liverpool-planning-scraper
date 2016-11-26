@@ -8,6 +8,8 @@ import re
 
 from lxml.html import fromstring
 import pytz
+from bng_to_latlon import OSGB36toWGS84
+
 
 UK = pytz.timezone('Europe/London')
 Geo = namedtuple('Geo', 'easting,northing,latitude,longitude')
@@ -17,14 +19,18 @@ class Geo():
     def __init__(self, easting, northing):
         self.easting = easting
         self.northing = northing
+        self.latitude, self.longitude = self.__lat_lng()
 
-    @property
-    def latitude(self):
-        return None
+    def __lat_lng(self):
+        if self.easting is not None and self.northing is not None:
+            return OSGB36toWGS84(self.easting, self.northing)
+        else:
+            return None, None
 
-    @property
-    def longitude(self):
-        return None
+    def __repr__(self):
+        return 'Geo(easting={}, northing={}, lat={}, lng={})'.format(
+            self.easting, self.northing, self.latitude, self.longitude
+        )
 
 
 def scrape_single_application(url):
@@ -38,6 +44,8 @@ def scrape_single_application(url):
 def parse_application_page(page_bytes):
     unicode_html = page_bytes.decode('utf-8')
     root = fromstring(unicode_html)
+
+    geo = parse_geo(root)
 
     return OrderedDict([
        ('extract_datetime', datetime.datetime.now(UK)),
@@ -58,10 +66,10 @@ def parse_application_page(page_bytes):
        ('applicant', parse_applicant(root)),
        ('agent', parse_agent(root)),
        ('wards', parse_wards(root)),
-       ('geo_northing', parse_geo_northing(root)),
-       ('geo_easting', parse_geo_easting(root)),
-       ('geo_latitude', None),
-       ('geo_longitude', None),
+       ('geo_northing', geo.northing),
+       ('geo_easting', geo.easting),
+       ('geo_latitude', geo.latitude),
+       ('geo_longitude', geo.longitude),
        ('parishes', parse_parishes(root)),
        ('case_officer_name', parse_case_officer_name(root)),
        ('case_officer_number', parse_case_officer_number(root)),
@@ -216,14 +224,6 @@ def parse_wards(lxml_root):
 
 def parse_parishes(lxml_root):
     return parse_named_field(lxml_root, 'Parishes')
-
-
-def parse_geo_northing(lxml_root):
-    return parse_geo(lxml_root).northing
-
-
-def parse_geo_easting(lxml_root):
-    return parse_geo(lxml_root).easting
 
 
 def parse_geo(lxml_root):
